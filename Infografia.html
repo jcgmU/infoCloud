@@ -1,0 +1,1523 @@
+<script>
+  // Variables del juego
+  let currentQuestionIndex = 0;
+  let score = 0;
+  let gameStarted = false;
+
+  const questions = [
+    {
+      question: "¿Cuántas transacciones diarias maneja actualmente la empresa?",
+      options: [
+        "500,000 transacciones",
+        "1 millón de transacciones",
+        "2 millones de transacciones",
+        "5 millones de transacciones",
+      ],
+      correct: 1,
+      explanation:
+        "La empresa maneja más de 1 millón de transacciones diarias según el documento.",
+    },
+    {
+      question:
+        "¿Cuánto puede incrementarse la demanda durante eventos especiales?",
+      options: [
+        "10x en una hora",
+        "30x en minutos",
+        "50x en segundos",
+        "20x en medio día",
+      ],
+      correct: 1,
+      explanation:
+        "Durante eventos especiales, la demanda puede incrementarse hasta 30x en cuestión de minutos.",
+    },
+    {
+      question: "¿Cuál es la latencia objetivo para el sistema (P99)?",
+      options: ["100ms", "75ms", "50ms", "25ms"],
+      correct: 2,
+      explanation:
+        "El sistema requiere una latencia máxima de 50ms en el percentil 99.",
+    },
+    {
+      question: "¿Qué base de datos se recomienda como solución?",
+      options: [
+        "Aurora Serverless v2",
+        "Amazon DynamoDB",
+        "RDS MySQL",
+        "Amazon Timestream",
+      ],
+      correct: 1,
+      explanation:
+        "Amazon DynamoDB se recomienda por su escalado automático y baja latencia.",
+    },
+    {
+      question: "¿Cuál es el tiempo de escalado de DynamoDB?",
+      options: [
+        "1-5 segundos",
+        "15-60 segundos",
+        "2-10 minutos",
+        "30 segundos",
+      ],
+      correct: 0,
+      explanation:
+        "DynamoDB puede escalar automáticamente en 1-5 segundos, mucho más rápido que otras soluciones.",
+    },
+    {
+      question: "¿Qué disponibilidad ofrece DynamoDB?",
+      options: ["99.9%", "99.95%", "99.99%", "99.999%"],
+      correct: 3,
+      explanation:
+        "DynamoDB ofrece 99.999% de disponibilidad con replicación Multi-AZ.",
+    },
+    {
+      question: "¿Cuánto es la reducción de costos estimada con DynamoDB?",
+      options: ["25%", "30%", "35%", "40%"],
+      correct: 2,
+      explanation:
+        "Se estima una reducción del 35% en costos operativos mensales.",
+    },
+    {
+      question: "¿Cuál es la latencia típica de DynamoDB (P99)?",
+      options: ["9-15ms", "20-50ms", "30-100ms", "50-75ms"],
+      correct: 0,
+      explanation:
+        "DynamoDB ofrece latencia de 9-15ms en el percentil 99, superior a otras opciones.",
+    },
+    {
+      question:
+        "¿Qué servicio se recomienda para mejorar el rendimiento de consultas frecuentes?",
+      options: [
+        "ElastiCache",
+        "DynamoDB Accelerator (DAX)",
+        "CloudFront",
+        "Lambda",
+      ],
+      correct: 1,
+      explanation:
+        "DynamoDB Accelerator (DAX) proporciona microsegundos de latencia para consultas frecuentes.",
+    },
+    {
+      question: "¿Cuál fue la mejora en el abandono de carritos?",
+      options: [
+        "Del 15% al 5%",
+        "Del 12% al 3.8%",
+        "Del 10% al 2%",
+        "Del 8% al 1.5%",
+      ],
+      correct: 1,
+      explanation:
+        "El abandono de carritos se redujo del 12% al 3.8% con la nueva arquitectura.",
+    },
+  ];
+
+  function showSection(sectionId) {
+    // Ocultar todas las secciones
+    const sections = document.querySelectorAll(".section");
+    sections.forEach((section) => {
+      section.classList.remove("active");
+    });
+
+    // Remover clase active de todos los botones
+    const buttons = document.querySelectorAll(".nav-button");
+    buttons.forEach((button) => {
+      button.classList.remove("active");
+    });
+
+    // Mostrar la sección seleccionada
+    document.getElementById(sectionId).classList.add("active");
+
+    // Activar el botón correspondiente
+    event.target.classList.add("active");
+
+    // Inicializar juego si es necesario
+    if (sectionId === "game" && !gameStarted) {
+      initializeGame();
+    }
+
+    // Efecto de animación suave
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function initializeGame() {
+    gameStarted = true;
+    currentQuestionIndex = 0;
+    score = 0;
+    updateGameStats();
+    displayQuestion();
+  }
+
+  function displayQuestion() {
+    const question = questions[currentQuestionIndex];
+    document.getElementById("questionText").textContent = question.question;
+
+    const optionsContainer = document.getElementById("optionsContainer");
+    optionsContainer.innerHTML = "";
+
+    question.options.forEach((option, index) => {
+      const button = document.createElement("button");
+      button.className = "option-button";
+      button.textContent = option;
+      button.onclick = () => selectAnswer(index);
+      optionsContainer.appendChild(button);
+    });
+
+    // Ocultar controles
+    document.getElementById("gameControls").style.display = "none";
+  }
+
+  function selectAnswer(selectedIndex) {
+    const question = questions[currentQuestionIndex];
+    const options = document.querySelectorAll(".option-button");
+
+    // Deshabilitar todos los botones
+    options.forEach((button) => (button.disabled = true));
+
+    // Marcar respuesta correcta e incorrecta
+    options.forEach((button, index) => {
+      if (index === question.correct) {
+        button.classList.add("correct");
+      } else if (
+        index === selectedIndex &&
+        selectedIndex !== question.correct
+      ) {
+        button.classList.add("incorrect");
+      }
+    });
+
+    // Actualizar puntuación
+    if (selectedIndex === question.correct) {
+      score++;
+      showFeedback("¡Correcto! 🎉", question.explanation, true);
+    } else {
+      showFeedback("Incorrecto 😞", question.explanation, false);
+    }
+
+    updateGameStats();
+
+    // Mostrar controles para siguiente pregunta
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        document.getElementById("gameControls").style.display = "block";
+      } else {
+        completeGame();
+      }
+    }, 2000);
+  }
+
+  function showFeedback(title, explanation, isCorrect) {
+    const feedbackDiv = document.createElement("div");
+    feedbackDiv.className = `card ${
+      isCorrect ? "correct-feedback" : "incorrect-feedback"
+    }`;
+    feedbackDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                background: ${
+                  isCorrect
+                    ? "linear-gradient(135deg, #48bb78, #38a169)"
+                    : "linear-gradient(135deg, #f56565, #e53e3e)"
+                };
+                color: white;
+                padding: 20px;
+                border-radius: 15px;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                animation: fadeIn 0.5s ease-out;
+            `;
+
+    feedbackDiv.innerHTML = `
+                <h4>${title}</h4>
+                <p style="margin-top: 10px;">${explanation}</p>
+            `;
+
+    document.body.appendChild(feedbackDiv);
+
+    setTimeout(() => {
+      document.body.removeChild(feedbackDiv);
+    }, 3000);
+  }
+
+  function nextQuestion() {
+    currentQuestionIndex++;
+    updateGameStats();
+    displayQuestion();
+  }
+
+  function updateGameStats() {
+    document.getElementById("score").textContent = score;
+    document.getElementById("currentQ").textContent = currentQuestionIndex + 1;
+
+    // Actualizar barra de progreso
+    const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    document.getElementById("progressBar").style.width = progress + "%";
+  }
+
+  function completeGame() {
+    document.getElementById("questionContainer").style.display = "none";
+    document.getElementById("gameControls").style.display = "none";
+    document.getElementById("gameComplete").style.display = "block";
+
+    document.getElementById("finalScore").textContent = score;
+
+    let message = "";
+    let emoji = "";
+
+    if (score >= 9) {
+      message = "¡Excelente! Eres un experto en bases de datos AWS 🚀";
+      emoji = "🏆";
+    } else if (score >= 7) {
+      message = "¡Muy bien! Tienes un buen conocimiento del tema 👍";
+      emoji = "🥈";
+    } else if (score >= 5) {
+      message = "Bien, pero puedes mejorar. Revisa el contenido 📚";
+      emoji = "🥉";
+    } else {
+      message = "Necesitas estudiar más el contenido. ¡Inténtalo de nuevo! 💪";
+      emoji = "📖";
+    }
+
+    document.querySelector(".score-badge").textContent = emoji;
+    document.getElementById(
+      "scoreMessage"
+    ).innerHTML = `<p style="font-size: 1.1rem; margin-top: 15px;">${message}</p>`;
+
+    // Confetti effect para puntuaciones altas
+    if (score >= 8) {
+      createConfetti();
+    }
+  }
+
+  function resetGame() {
+    gameStarted = false;
+    currentQuestionIndex = 0;
+    score = 0;
+
+    document.getElementById("questionContainer").style.display = "block";
+    document.getElementById("gameControls").style.display = "none";
+    document.getElementById("gameComplete").style.display = "none";
+
+    initializeGame();
+  }
+
+  function createConfetti() {
+    const colors = [
+      "#667eea",
+      "#764ba2",
+      "#48bb78",
+      "#38a169",
+      "#f6e05e",
+      "#ed8936",
+    ];
+
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement("div");
+        confetti.style.cssText = `
+                        position: fixed;
+                        top: -10px;
+                        left: ${Math.random() * 100}%;
+                        width: 10px;
+                        height: 10px;
+                        background: ${
+                          colors[Math.floor(Math.random() * colors.length)]
+                        };
+                        z-index: 1000;
+                        animation: confetti-fall 3s linear forwards;
+                        border-radius: 50%;
+                    `;
+
+        document.body.appendChild(confetti);
+
+        setTimeout(() => {
+          if (document.body.contains(confetti)) {
+            document.body.removeChild(confetti);
+          }
+        }, 3000);
+      }, i * 100);
+    }
+  }
+
+  // Agregar estilos para el confetti
+  const style = document.createElement("style");
+  style.textContent = `
+            @keyframes confetti-fall {
+                to {
+                    transform: translateY(100vh) rotate(360deg);
+                }
+            }
+            
+            @keyframes fadeInDown {
+                from { opacity: 0; transform: translateY(-30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            @keyframes bounce {
+                0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-10px); }
+                60% { transform: translateY(-5px); }
+            }
+        `;
+  document.head.appendChild(style);
+
+  // Agregar interactividad a elementos
+  document.addEventListener("DOMContentLoaded", function () {
+    // Animar métricas al cargar
+    const metricBoxes = document.querySelectorAll(".metric-box");
+    metricBoxes.forEach((box, index) => {
+      setTimeout(() => {
+        box.style.animation = `fadeIn 0.8s ease-out ${index * 0.1}s both`;
+      }, 100);
+    });
+
+    // Efecto hover en tarjetas
+    const cards = document.querySelectorAll(".card");
+    cards.forEach((card) => {
+      card.addEventListener("mouseenter", function () {
+        this.style.transform = "translateY(-5px) scale(1.02)";
+      });
+
+      card.addEventListener("mouseleave", function () {
+        this.style.transform = "translateY(0) scale(1)";
+      });
+    });
+
+    // Animación de los elementos del diagrama
+    const diagramBoxes = document.querySelectorAll(".diagram-box");
+    diagramBoxes.forEach((box, index) => {
+      box.addEventListener("click", function () {
+        this.style.animation = "bounce 0.6s ease-out";
+        setTimeout(() => {
+          this.style.animation = "";
+        }, 600);
+      });
+    });
+
+    // Animación para los elementos problemáticos
+    const problemHighlights = document.querySelectorAll(".problem-highlight");
+    problemHighlights.forEach((element, index) => {
+      element.style.animation = `fadeIn 0.8s ease-out ${index * 0.2}s both`;
+    });
+  });
+
+  // Función para cambiar tema (bonus)
+  function toggleTheme() {
+    document.body.classList.toggle("dark-theme");
+  }
+
+  // Inicializar primera sección
+  document.addEventListener("DOMContentLoaded", function () {
+    // Activar primera sección
+    showSection("problem");
+  });
+</script>
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluación de Bases de Datos AWS - Infografía Interactiva</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+        animation: fadeInDown 1s ease-out;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+      }
+
+      .navigation {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .nav-button {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+      }
+
+      .nav-button:hover,
+      .nav-button.active {
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .section {
+        display: none;
+        animation: fadeIn 0.8s ease-out;
+      }
+
+      .section.active {
+        display: block;
+      }
+
+      .cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .card h3 {
+        color: #4a5568;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon {
+        width: 30px;
+        height: 30px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+      }
+
+      .comparison-table {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 25px;
+        overflow-x: auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .comparison-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .comparison-table th {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        font-weight: 600;
+      }
+
+      .comparison-table tr:hover {
+        background: rgba(102, 126, 234, 0.1);
+      }
+
+      .highlight {
+        background: linear-gradient(45deg, #48bb78, #38a169);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 15px;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .architecture-diagram {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .diagram-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .diagram-box {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-weight: 600;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .diagram-box:hover {
+        transform: scale(1.05);
+      }
+
+      .arrow {
+        font-size: 2rem;
+        color: #667eea;
+        animation: bounce 2s infinite;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+
+      .metric-box {
+        background: linear-gradient(135deg, #48bb78, #38a169);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .metric-box:hover {
+        transform: scale(1.05);
+      }
+
+      .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+
+      .benefits-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+      }
+
+      .benefit-item {
+        background: rgba(72, 187, 120, 0.1);
+        border-left: 4px solid #48bb78;
+        padding: 15px;
+        border-radius: 5px;
+      }
+
+      .interactive-element {
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .interactive-element:hover {
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 5px;
+        padding: 5px;
+        margin: -5px;
+      }
+
+      .tooltip {
+        position: relative;
+        display: inline-block;
+      }
+
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 200px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -100px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8rem;
+      }
+
+      .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .game-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .question-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin: 20px 0;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      }
+
+      .question-text {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        line-height: 1.4;
+      }
+
+      .options-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .option-button {
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        border: 2px solid transparent;
+        padding: 15px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        font-size: 1rem;
+      }
+
+      .option-button:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .option-button.correct {
+        background: #48bb78;
+        color: white;
+        border-color: #38a169;
+        animation: pulse-correct 0.6s ease-out;
+      }
+
+      .option-button.incorrect {
+        background: #f56565;
+        color: white;
+        border-color: #e53e3e;
+        animation: shake 0.6s ease-out;
+      }
+
+      .game-stats {
+        display: flex;
+        justify-content: space-around;
+        background: rgba(72, 187, 120, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+      }
+
+      .stat-item {
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #48bb78;
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        color: #4a5568;
+      }
+
+      .next-question-btn {
+        background: linear-gradient(45deg, #48bb78, #38a169);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 20px 10px;
+        transition: all 0.3s ease;
+      }
+
+      .next-question-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+      }
+
+      .reset-game-btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 20px 10px;
+        transition: all 0.3s ease;
+      }
+
+      .reset-game-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .progress-bar {
+        background: rgba(0, 0, 0, 0.1);
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 20px 0;
+      }
+
+      .progress-fill {
+        background: linear-gradient(45deg, #48bb78, #38a169);
+        height: 100%;
+        transition: width 0.5s ease;
+        border-radius: 4px;
+      }
+
+      .game-complete {
+        background: linear-gradient(135deg, #48bb78, #38a169);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin: 20px 0;
+      }
+
+      .score-badge {
+        font-size: 3rem;
+        margin: 20px 0;
+      }
+
+      .problem-highlight {
+        background: linear-gradient(135deg, #f56565, #e53e3e);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        box-shadow: 0 8px 25px rgba(245, 101, 101, 0.3);
+      }
+
+      .problem-solution {
+        background: linear-gradient(135deg, #48bb78, #38a169);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+      }
+
+      @keyframes pulse-correct {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        75% {
+          transform: translateX(5px);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 2rem;
+        }
+        .header p {
+          font-size: 1rem;
+        }
+        .nav-button {
+          padding: 10px 20px;
+          font-size: 0.9rem;
+        }
+        .diagram-container {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 Evaluación de Bases de Datos AWS</h1>
+        <p>Solución SaaS para Procesamiento de Pagos de Alta Escalabilidad</p>
+      </div>
+
+      <div class="navigation">
+        <button class="nav-button active" onclick="showSection('problem')">
+          🛑 Problemática
+        </button>
+        <button class="nav-button" onclick="showSection('overview')">
+          📊 Panorama General
+        </button>
+        <button class="nav-button" onclick="showSection('comparison')">
+          ⚖️ Comparativa
+        </button>
+        <button class="nav-button" onclick="showSection('architecture')">
+          🏗️ Arquitectura
+        </button>
+        <button class="nav-button" onclick="showSection('metrics')">
+          📈 Métricas
+        </button>
+        <button class="nav-button" onclick="showSection('benefits')">
+          💡 Beneficios
+        </button>
+        <button class="nav-button" onclick="showSection('game')">
+          🎮 Quiz Interactivo
+        </button>
+      </div>
+
+      <!-- Sección Problemática -->
+      <div id="problem" class="section active">
+        <div class="cards-container">
+          <div class="card">
+            <h3><span class="icon">🛑</span>Problemática a Resolver</h3>
+            <p style="font-size: 1.1rem; margin-bottom: 20px">
+              Una empresa de procesamiento de pagos en línea enfrenta un desafío
+              crítico en la administración, escalabilidad y seguridad de su base
+              de datos debido a la
+              <strong
+                >naturaleza altamente volátil y transaccional de su
+                negocio</strong
+              >.
+            </p>
+
+            <div class="problem-highlight">
+              <h4>📊 Volumen de Transacciones</h4>
+              <p><strong>Más de 1 millón de transacciones diarias</strong></p>
+              <p>
+                Picos de hasta <strong>30x en minutos</strong> durante eventos
+                especiales
+              </p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3><span class="icon">🔍</span>Principales Problemas</h3>
+            <div style="display: grid; gap: 15px; margin-top: 20px">
+              <div
+                class="problem-highlight"
+                style="background: linear-gradient(135deg, #e53e3e, #c53030)"
+              >
+                <h4>1️⃣ Escalabilidad Limitada</h4>
+                <p>
+                  Arquitectura EC2 + BD desconocida
+                  <strong>no se adapta a picos de carga</strong>, generando
+                  cuellos de botella
+                </p>
+              </div>
+
+              <div
+                class="problem-highlight"
+                style="background: linear-gradient(135deg, #dd6821, #c05621)"
+              >
+                <h4>2️⃣ Gestión Compleja</h4>
+                <p>
+                  Administración manual: configuración, mantenimiento, backups y
+                  escalado manual
+                </p>
+              </div>
+
+              <div
+                class="problem-highlight"
+                style="background: linear-gradient(135deg, #d69e2e, #b7791f)"
+              >
+                <h4>3️⃣ Seguridad Fragmentada</h4>
+                <p>
+                  BD no integrada en modelo SaaS, dificultando políticas
+                  uniformes de seguridad
+                </p>
+              </div>
+
+              <div
+                class="problem-highlight"
+                style="background: linear-gradient(135deg, #9f7aea, #805ad5)"
+              >
+                <h4>4️⃣ Rendimiento Deficiente</h4>
+                <p>
+                  Latencia inaceptable durante picos, afectando validación
+                  bancaria en tiempo real
+                </p>
+              </div>
+
+              <div
+                class="problem-highlight"
+                style="background: linear-gradient(135deg, #38b2ac, #319795)"
+              >
+                <h4>5️⃣ Sin Monitoreo Automático</h4>
+                <p>
+                  Falta de autoescalado y monitoreo avanzado para anticipar
+                  fallas
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3><span class="icon">🎯</span>Necesidad Urgente</h3>
+            <div class="problem-solution">
+              <h4>Implementar una solución SaaS de base de datos que:</h4>
+              <ul
+                style="text-align: left; margin-top: 15px; padding-left: 20px"
+              >
+                <li>
+                  ⚡ <strong>Escale automáticamente</strong> ante aumentos de
+                  tráfico
+                </li>
+                <li>
+                  🛠️ <strong>Simplifique la administración</strong> de la base
+                  de datos
+                </li>
+                <li>
+                  🔗 <strong>Se integre</strong> con servicios existentes (IAM,
+                  KMS, SDK AWS)
+                </li>
+                <li>
+                  🎯 <strong>Garantice alta disponibilidad</strong>, baja
+                  latencia y rendimiento constante
+                </li>
+                <li>
+                  🔒 <strong>Asegure el cumplimiento</strong> de políticas de
+                  seguridad y auditoría
+                </li>
+                <li>
+                  📈 <strong>Se adapte al modelo dinámico</strong> y
+                  transaccional del negocio
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Panorama General -->
+      <div id="overview" class="section">
+        <div class="cards-container">
+          <div class="card">
+            <h3><span class="icon">🎯</span>El Desafío</h3>
+            <p>
+              <strong>1 millón de transacciones diarias</strong> con picos de
+              hasta <span class="highlight">30x más volumen</span>
+            </p>
+            <br />
+            <div class="interactive-element tooltip">
+              <p>Requisitos críticos:</p>
+              <span class="tooltiptext"
+                >Estos son requisitos no negociables para el procesamiento de
+                pagos</span
+              >
+            </div>
+            <ul style="margin-top: 10px; padding-left: 20px">
+              <li>🎯 Latencia < 50ms (P99)</li>
+              <li>⚡ Disponibilidad 99.9%</li>
+              <li>📈 Escalado automático</li>
+              <li>🔒 Seguridad PCI DSS</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3><span class="icon">⚠️</span>Problemas Actuales</h3>
+            <p>La base de datos actual no escala automáticamente, causando:</p>
+            <ul style="margin-top: 15px; padding-left: 20px">
+              <li>🐌 <strong>Throttling:</strong> >500ms latencia en picos</li>
+              <li>💸 <strong>Sobrecostos:</strong> 40% capacidad ociosa</li>
+              <li>
+                📉 <strong>Pérdidas:</strong> Transacciones fallidas en
+                promociones
+              </li>
+              <li>
+                🔧 <strong>Mantenimiento:</strong> Intervención manual constante
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3><span class="icon">🏆</span>Solución Recomendada</h3>
+            <div style="text-align: center; margin: 20px 0">
+              <div
+                style="
+                  background: linear-gradient(45deg, #667eea, #764ba2);
+                  color: white;
+                  padding: 20px;
+                  border-radius: 15px;
+                  font-size: 1.5rem;
+                  font-weight: bold;
+                "
+              >
+                Amazon DynamoDB
+              </div>
+            </div>
+            <p>Base de datos NoSQL totalmente administrada con:</p>
+            <ul style="margin-top: 15px; padding-left: 20px">
+              <li>⚡ Escalado en 1-5 segundos</li>
+              <li>🎯 Latencia <10ms consistente</li>
+              <li>💰 35% reducción de costos</li>
+              <li>🛡️ Disponibilidad 99.999%</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Comparativa -->
+      <div id="comparison" class="section">
+        <div class="comparison-table">
+          <h3>
+            <span class="icon">⚖️</span>Comparativa Técnica de Servicios AWS
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Característica</th>
+                <th>DynamoDB</th>
+                <th>Aurora Serverless v2</th>
+                <th>RDS MySQL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="interactive-element">
+                <td><strong>Modelo de datos</strong></td>
+                <td>NoSQL (key-value) 🔑</td>
+                <td>Relacional (ACID) 🏛️</td>
+                <td>Relacional (ACID) 🏛️</td>
+              </tr>
+              <tr class="interactive-element">
+                <td><strong>Escalado horizontal</strong></td>
+                <td>
+                  <span class="highlight">Ilimitado</span> (auto-sharding)
+                </td>
+                <td>Hasta 128 ACUs</td>
+                <td>Limitado por instancia</td>
+              </tr>
+              <tr class="interactive-element">
+                <td><strong>Latencia (P99)</strong></td>
+                <td><span class="highlight">9-15 ms</span> ⚡</td>
+                <td>20-50 ms</td>
+                <td>30-100 ms</td>
+              </tr>
+              <tr class="interactive-element">
+                <td><strong>Costo por 1M operaciones</strong></td>
+                <td><span class="highlight">$1.25</span> 💰</td>
+                <td>$2.10</td>
+                <td>$1.80</td>
+              </tr>
+              <tr class="interactive-element">
+                <td><strong>Escalado automático</strong></td>
+                <td><span class="highlight">Sí (1-5 segundos)</span> 🚀</td>
+                <td>Sí (15-60 segundos)</td>
+                <td>No ❌</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sección Arquitectura -->
+      <div id="architecture" class="section">
+        <div class="architecture-diagram">
+          <h3>
+            <span class="icon">🏗️</span>Arquitectura Propuesta con DynamoDB
+          </h3>
+          <div class="diagram-container">
+            <div class="diagram-box interactive-element tooltip">
+              👥 Clientes & 🏦 Bancos
+              <span class="tooltiptext"
+                >Múltiples fuentes de tráfico que pueden generar picos de
+                30x</span
+              >
+            </div>
+            <div class="arrow">⬇️</div>
+            <div class="diagram-box interactive-element tooltip">
+              🌐 Elastic Load Balancer
+              <span class="tooltiptext"
+                >Distribución de tráfico con terminación SSL/TLS</span
+              >
+            </div>
+            <div class="arrow">⬇️</div>
+            <div class="diagram-box interactive-element tooltip">
+              🖥️ Instancias EC2 (Auto Scaling)
+              <span class="tooltiptext"
+                >Procesamiento de lógica de negocio con escalado
+                automático</span
+              >
+            </div>
+            <div class="arrow">⬇️</div>
+            <div
+              class="diagram-box interactive-element tooltip"
+              style="background: linear-gradient(45deg, #48bb78, #38a169)"
+            >
+              🗄️ Amazon DynamoDB
+              <span class="tooltiptext"
+                >Base de datos NoSQL con auto-scaling en segundos</span
+              >
+            </div>
+            <div class="arrow">⬇️</div>
+            <div class="diagram-box interactive-element tooltip">
+              📊 CloudWatch + CloudTrail
+              <span class="tooltiptext"
+                >Monitoreo y auditoría en tiempo real</span
+              >
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; text-align: left">
+            <h4>🔄 Flujo de Transacción:</h4>
+            <ol style="margin-top: 15px; padding-left: 25px">
+              <li>
+                <strong>Cliente →</strong> ELB (terminación SSL) → EC2 →
+                DynamoDB
+              </li>
+              <li>
+                <strong>EC2 →</strong> API Gateway (mTLS) → Bancos externos
+              </li>
+              <li>
+                <strong>CloudWatch</strong> monitorea y activa Auto Scaling
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Métricas -->
+      <div id="metrics" class="section">
+        <div class="card">
+          <h3><span class="icon">📈</span>Impacto en Métricas Clave</h3>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-value">99.999%</div>
+              <div class="metric-label">Disponibilidad<br />(vs 99.95%)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">15ms</div>
+              <div class="metric-label">Latencia P99<br />(vs 220ms)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">-35%</div>
+              <div class="metric-label">
+                Costos Operativos<br />($31,200 vs $48,000)
+              </div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">8min</div>
+              <div class="metric-label">MTTR<br />(vs 45min)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">3.8%</div>
+              <div class="metric-label">Abandono de Carritos<br />(vs 12%)</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">1-5s</div>
+              <div class="metric-label">
+                Tiempo de Escalado<br />(Auto Scaling)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px">
+          <h3><span class="icon">⚙️</span>Configuración de Auto Scaling</h3>
+          <div
+            style="
+              background: #f7fafc;
+              padding: 20px;
+              border-radius: 10px;
+              margin-top: 15px;
+            "
+          >
+            <p>
+              <strong>🎯 Target de Utilización:</strong> 70% Write Capacity
+              Units
+            </p>
+            <p><strong>⚡ Scale Out:</strong> 10 segundos de cooldown</p>
+            <p><strong>🔽 Scale In:</strong> 60 segundos de cooldown</p>
+            <p><strong>📊 Rango:</strong> 1,000 - 30,000 WCU</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Beneficios -->
+      <div id="benefits" class="section">
+        <div class="card">
+          <h3><span class="icon">💡</span>Beneficios de la Solución</h3>
+          <div class="benefits-list">
+            <div class="benefit-item">
+              <h4>🚀 Rendimiento Superior</h4>
+              <p>
+                Capacidad probada de 20M solicitudes/segundo con latencia
+                sub-10ms
+              </p>
+            </div>
+            <div class="benefit-item">
+              <h4>💰 Optimización de Costos</h4>
+              <p>Modelo on-demand que elimina el 40% de capacidad ociosa</p>
+            </div>
+            <div class="benefit-item">
+              <h4>🛡️ Seguridad Empresarial</h4>
+              <p>Integración nativa con IAM y KMS para cumplimiento PCI DSS</p>
+            </div>
+            <div class="benefit-item">
+              <h4>⚡ Escalado Instantáneo</h4>
+              <p>Auto Scaling en 1-5 segundos vs 15-60s de otras soluciones</p>
+            </div>
+            <div class="benefit-item">
+              <h4>🌍 Alta Disponibilidad</h4>
+              <p>Replicación Multi-AZ + Global Tables para recuperación</p>
+            </div>
+            <div class="benefit-item">
+              <h4>📊 Monitoreo Avanzado</h4>
+              <p>
+                Integración con CloudWatch y CloudTrail para observabilidad
+                completa
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px">
+          <h3><span class="icon">📋</span>Recomendaciones de Implementación</h3>
+          <div style="margin-top: 15px">
+            <div class="benefit-item">
+              <h4>🚀 DynamoDB Accelerator (DAX)</h4>
+              <p>
+                Implementar para consultas frecuentes con microsegundos de
+                latencia
+              </p>
+            </div>
+            <div class="benefit-item">
+              <h4>💾 AWS Backup</h4>
+              <p>Retención de 7 años para cumplimiento regulatorio PCI DSS</p>
+            </div>
+            <div class="benefit-item">
+              <h4>💸 Cost Explorer + Budgets</h4>
+              <p>Monitoreo proactivo de costos con alertas automáticas</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Quiz Interactivo -->
+      <div id="game" class="section">
+        <div class="game-container">
+          <h3>
+            <span class="icon">🎮</span>Quiz Interactivo - Pon a Prueba tu
+            Conocimiento
+          </h3>
+
+          <div class="game-stats">
+            <div class="stat-item">
+              <div class="stat-value" id="score">0</div>
+              <div class="stat-label">Puntuación</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="currentQ">1</div>
+              <div class="stat-label">Pregunta</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="totalQ">10</div>
+              <div class="stat-label">Total</div>
+            </div>
+          </div>
+
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              id="progressBar"
+              style="width: 10%"
+            ></div>
+          </div>
+
+          <div id="questionContainer">
+            <div class="question-card">
+              <div class="question-text" id="questionText">
+                ¿Cuántas transacciones diarias maneja actualmente la empresa?
+              </div>
+              <div class="options-grid" id="optionsContainer">
+                <button class="option-button" onclick="selectAnswer(0)">
+                  500,000 transacciones
+                </button>
+                <button class="option-button" onclick="selectAnswer(1)">
+                  1 millón de transacciones
+                </button>
+                <button class="option-button" onclick="selectAnswer(2)">
+                  2 millones de transacciones
+                </button>
+                <button class="option-button" onclick="selectAnswer(3)">
+                  5 millones de transacciones
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="gameControls" style="display: none">
+            <button class="next-question-btn" onclick="nextQuestion()">
+              Siguiente Pregunta ➡️
+            </button>
+          </div>
+
+          <div id="gameComplete" class="game-complete" style="display: none">
+            <div class="score-badge">🏆</div>
+            <h3>¡Quiz Completado!</h3>
+            <p>Has terminado el quiz sobre bases de datos AWS</p>
+            <div style="margin: 20px 0">
+              <div style="font-size: 1.5rem; margin: 10px 0">
+                Tu puntuación: <span id="finalScore">0</span>/10
+              </div>
+              <div id="scoreMessage"></div>
+            </div>
+            <button class="reset-game-btn" onclick="resetGame()">
+              🔄 Jugar de Nuevo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function showSection(sectionId) {
+        // Ocultar todas las secciones
+        const sections = document.querySelectorAll(".section");
+        sections.forEach((section) => {
+          section.classList.remove("active");
+        });
+
+        // Remover clase active de todos los botones
+        const buttons = document.querySelectorAll(".nav-button");
+        buttons.forEach((button) => {
+          button.classList.remove("active");
+        });
+
+        // Mostrar la sección seleccionada
+        document.getElementById(sectionId).classList.add("active");
+
+        // Activar el botón correspondiente
+        event.target.classList.add("active");
+
+        // Efecto de animación suave
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
+
+      // Agregar interactividad a elementos
+      document.addEventListener("DOMContentLoaded", function () {
+        // Animar métricas al cargar
+        const metricBoxes = document.querySelectorAll(".metric-box");
+        metricBoxes.forEach((box, index) => {
+          setTimeout(() => {
+            box.style.animation = `fadeIn 0.8s ease-out ${index * 0.1}s both`;
+          }, 100);
+        });
+
+        // Efecto hover en tarjetas
+        const cards = document.querySelectorAll(".card");
+        cards.forEach((card) => {
+          card.addEventListener("mouseenter", function () {
+            this.style.transform = "translateY(-5px) scale(1.02)";
+          });
+
+          card.addEventListener("mouseleave", function () {
+            this.style.transform = "translateY(0) scale(1)";
+          });
+        });
+
+        // Animación de los elementos del diagrama
+        const diagramBoxes = document.querySelectorAll(".diagram-box");
+        diagramBoxes.forEach((box, index) => {
+          box.addEventListener("click", function () {
+            this.style.animation = "bounce 0.6s ease-out";
+            setTimeout(() => {
+              this.style.animation = "";
+            }, 600);
+          });
+        });
+      });
+
+      // Función para cambiar tema (bonus)
+      function toggleTheme() {
+        document.body.classList.toggle("dark-theme");
+      }
+    </script>
+  </body>
+</html>
